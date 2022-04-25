@@ -1,0 +1,2 @@
+-record(room, {name, owner, clients=[]}).
+-record(user, {name, socket}).
