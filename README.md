@@ -1,6 +1,7 @@
 mc chat
 =====
 
+
 Server
 -----
 
@@ -53,5 +54,10 @@ To use the chat do the following steps:
 6. **execute commands:** use one of the commands specified above 
 
 _* steps from 4 to 6 can be repeated several times to create more clients_
+
+
+Technical Notes
+-----
+sviluppato su piattaforma windows con Erlang/OTP 24 e rebar3 in modalità 'application' 
 
 
