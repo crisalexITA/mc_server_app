@@ -20,16 +20,16 @@ It is possible to use command line chat via commands in the form of tuples. The 
 
 | Command        | Description     | Example |
 |-|-----------|------------|
-|**{help}** |return the list of available commands|_{help}_|
-|**{rooms}**|return the list of available rooms|_{rooms}_|
-|**{users_room,"\<room\>"}**|return the list of users in a room|_{users_room, "green room"}_|
-|**{create_room,"\<room name\>"}**|create a new room |_{create_room, "blue room"}_|
-|**{enter_room,"\<room name\>"}**|the user will receive all messages sent in the room|_{enter_room, "yellow room"}_|
-|**{exit_room,"\<room name\>"}**|the user will not receive messages sent in the room|_{exit_room, "yellow room"}_|
-|**{send_room,"\<room name\>","\<message\>"}**|the user send the message to all users in the room|_{send_room, "yellow room","Hi all!"}_|
-|**{send_private,"\<user name\>","\<message\>"}**|the user send a private message to user|_{send_private, "Bart","Hi! How are you?"}_|
-|**{register,"\<user name\>"}**|the user sets his username|_{register, "Bart"}_|
-|**{quit}**|the user leaves the chat|_{quit}_|
+|**{help}.** |return the list of available commands|_{help}._|
+|**{rooms}.**|return the list of available rooms|_{rooms}._|
+|**{users_room,"\<room\>"}.**|return the list of users in a room|_{users_room, "green room"}._|
+|**{create_room,"\<room name\>"}.**|create a new room |_{create_room, "blue room"}._|
+|**{enter_room,"\<room name\>"}.**|the user will receive all messages sent in the room|_{enter_room, "yellow room"}._|
+|**{exit_room,"\<room name\>"}.**|the user will not receive messages sent in the room|_{exit_room, "yellow room"}._|
+|**{send_room,"\<room name\>","\<message\>"}.**|the user send the message to all users in the room|_{send_room, "yellow room","Hi all!"}._|
+|**{send_private,"\<user name\>","\<message\>"}.**|the user send a private message to user|_{send_private, "Bart","Hi! How are you?"}._|
+|**{register,"\<user name\>"}.**|the user sets his username|_{register, "Bart"}._|
+|**{quit}**|the user leaves the chat|_{quit}._|
 
 Database
 -----
@@ -50,7 +50,7 @@ To use the chat do the following steps:
 2. **clone client app:** https://github.com/crisalexITA/mc_client_app
 3. **start server:** open an os shell and go to server app folder and run _rebar shell_
 4. **start client:** open an os shell and go to client app folder and run _rebar shell_
-5. **register user:** from client set user nickname with _{register,"\<user name\>"}_
+5. **register user:** from client set user nickname with _{register,"\<user name\>"}._
 6. **execute commands:** use one of the commands specified above 
 
 _* steps from 4 to 6 can be repeated several times to create more clients_
