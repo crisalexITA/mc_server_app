@@ -58,6 +58,6 @@ _* steps from 4 to 6 can be repeated several times to create more clients_
 
 Technical Notes
 -----
-sviluppato su piattaforma windows con Erlang/OTP 24 e rebar3 in modalità 'application' 
+developed on windows platform with Erlang/OTP 24 and rebar3 in 'application' mode
 
 
