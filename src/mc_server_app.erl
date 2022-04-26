@@ -39,6 +39,7 @@ handleClient(ListenSocket) ->
     spawn(fun() -> handleClient(ListenSocket) end),
     handleMessages(AcceptSocket).
 
+% handle incoming message loop
 handleMessages(AcceptSocket) ->
     inet:setopts(AcceptSocket, [{active, true}]),
     receive
@@ -48,11 +49,15 @@ handleMessages(AcceptSocket) ->
 
             % log incoming message
             io:format("~p:~p~n", [Socket, Message]),
-
+            
+            % process incoming message
             processMessage(Socket, Message),
+            
             handleMessages(AcceptSocket)
+
     end.
 
+% process messages by action
 processMessage(Socket, Data) ->
     case Data of 
         {connect} ->
@@ -72,9 +77,8 @@ processMessage(Socket, Data) ->
             enterRoom(Socket, "public");
         
         % user exit
-        {quit, Pid} ->
-            gen_tcp:send(Socket, string:concat("Bye", Pid)),
-            gen_tcp:close(Socket);
+        {quit} ->
+            quit(Socket);
         
         % room message
         {send_message_room, Room, Message} ->
@@ -106,15 +110,31 @@ processMessage(Socket, Data) ->
             
     end.
 
+% user (socket) leaves the room
 exitRoom(Socket, Room) ->
     % send msg to rooms users
-    sendMessageRoom(Room, "has left the room", socketToUser(Socket)),
+    sendMessageRoom(Socket, Room, "has left the room"),
     
     DbRoom = hd(ets:lookup(rooms, Room)),
     Clients = lists:delete(Socket, DbRoom#room.clients),
     ets:insert(rooms, #room{name=Room, clients=Clients}).
 
+quit(Socket) ->
+    
+    % remove user from rooms
+    Rooms = ets:tab2list(rooms),
+    lists:foreach(
+        fun(Room) -> 
+            io:format("~p", [Room#room.name]),       
+            exitRoom(Socket, Room#room.name)
+        end,
+        Rooms
+    ),
 
+    % remove user from users
+    ets:delete(users, Socket).
+
+% return a list of user in a room
 getUsersRoom(Socket, Room) ->
     % get clients(users) in room
     DbRoom = hd(ets:lookup(rooms, Room)),
@@ -127,18 +147,22 @@ getUsersRoom(Socket, Room) ->
     ),
     gen_tcp:send(Socket, string:concat(Message, string:concat(string:trim(StringUsers, trailing, " | "), "]"))).
 
+% get username by socket id
 socketToUser(Socket) -> 
     DbUser = hd(ets:lookup(users, Socket)),
     DbUser#user.name.
 
+% user enters in a room
 enterRoom(Socket, Room) ->
     DbRoom = hd(ets:lookup(rooms, Room)),
     Clients = DbRoom#room.clients ++ [Socket],
+    % insert user into user list room record
     ets:insert(rooms, #room{name=Room, clients=Clients}),
     
     % send msg to rooms users
     sendMessageRoom(Socket, Room, "entered the room").
 
+% user send a message in room 
 sendMessageRoom(Socket, Room, Text) ->
     % get clients(users) in room
     DbRoom = hd(ets:lookup(rooms, Room)),
@@ -154,6 +178,7 @@ sendMessageRoom(Socket, Room, Text) ->
         Clients
     ).
 
+% user send private message
 sendMessagePrivate(Socket, Receiver, Text) ->
     % get receiver client 
     DbReceiver = hd(ets:match_object(users, #user{_='_', name=Receiver})),
@@ -165,6 +190,7 @@ sendMessagePrivate(Socket, Receiver, Text) ->
     gen_tcp:send(DbReceiver#user.socket, lists:append(["[ <- ", socketToUser(Socket), "] ", Text])).
 
 
+% get all rooms 
 getRooms(Socket) ->
     DbRooms = ets:tab2list(rooms),
 
@@ -176,6 +202,7 @@ getRooms(Socket) ->
 
     gen_tcp:send(Socket, string:concat(Message, string:concat(string:trim(StringRooms, trailing, " | "), "]"))).
 
+% create new room
 createRoom(Socket, Room) ->
     % insert room into table 
     ets:insert(rooms, #room{name=Room, owner=socketToUser(Socket), clients=[Socket]}),
