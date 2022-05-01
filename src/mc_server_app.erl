@@ -24,100 +24,32 @@ start_server() ->
 
     {ok, ListenSocket} = gen_tcp:listen(6666, [{active, true}, binary]),
     
-    % create db rooms table 
-    ets:new(rooms, [named_table, public, {keypos, #room.name}]),
-    % create db users table
-    ets:new(users, [named_table, public, {keypos, #user.socket}]),
-    % create public room
-    ets:insert(rooms, #room{name="public", owner=""}),
-
+    data_manager:init(),
+    
     spawn(fun() -> handleClient(ListenSocket) end),
     timer:sleep(infinity).
 
 handleClient(ListenSocket) -> 
     {ok, AcceptSocket} = gen_tcp:accept(ListenSocket),
     spawn(fun() -> handleClient(ListenSocket) end),
+
     handleMessages(AcceptSocket).
 
 % handle incoming message loop
 handleMessages(AcceptSocket) ->
     inet:setopts(AcceptSocket, [{active, true}]),
     receive
-        {tcp, Socket, BinMessage} ->
+        {tcp, Socket, Data} ->
             
-            Message = binary_to_term(BinMessage),
+            % log input
+            io:format("[LOG] ~p : ~p ~n", [Socket, Data]),
 
-            % log incoming message
-            io:format("~p:~p~n", [Socket, Message]),
+            % read input from clients and do actions
+            input_handler:handleInput(binary_to_list(Data), Socket),
             
-            % process incoming message
-            processMessage(Socket, Message),
-            
+            % continue loop
             handleMessages(AcceptSocket)
-
     end.
-
-% process messages by action
-processMessage(Socket, Data) ->
-    case Data of 
-        {connect} ->
-            gen_tcp:send(Socket, "[SYSTEM] Hello, you can change your name with {register, <name>}"),
-            timer:sleep(1),
-            gen_tcp:send(Socket, "[SYSTEM] Digit {help} to get a list of avalaiblle commands");
-
-        % register new user
-        {register, Name} ->
-            gen_tcp:send(Socket, lists:append(["[SYSTEM] You has been registered as ", Name])),
-            timer:sleep(1),
-            
-            % insert into users table
-            ets:insert(users, #user{name=Name, socket=Socket}),
-
-            % add user to public room 
-            enterRoom(Socket, "public");
-        
-        % user exit
-        {quit} ->
-            quit(Socket);
-        
-        % room message
-        {send_message_room, Room, Message} ->
-            sendMessageRoom(Socket, Room, Message);
-
-        % private message
-        {send_message_private, Receiver, Message} ->
-            sendMessagePrivate(Socket, Receiver, Message);
-
-        % rooms list
-        {rooms} ->
-            getRooms(Socket);
-
-        % create new room
-        {create_room, Room} ->
-            createRoom(Socket, Room);
-
-        % users room list
-        {users_room, Room} ->
-            getUsersRoom(Socket, Room);
-
-        % user exit room
-        {exit_room, Room} ->
-            exitRoom(Socket, Room);
-
-        % user enter room
-        {enter_room, Room} ->
-            enterRoom(Socket, Room)
-            
-    end.
-
-% user (socket) leaves the room
-exitRoom(Socket, Room) ->
-    % send msg to rooms users
-    sendMessageRoom(Socket, Room, "has left the room"),
-    
-    DbRoom = hd(ets:lookup(rooms, Room)),
-    Clients = lists:delete(Socket, DbRoom#room.clients),
-    ets:insert(rooms, #room{name=Room, clients=Clients}).
 
 quit(Socket) ->
     
@@ -125,8 +57,7 @@ quit(Socket) ->
     Rooms = ets:tab2list(rooms),
     lists:foreach(
         fun(Room) -> 
-            io:format("~p", [Room#room.name]),       
-            exitRoom(Socket, Room#room.name)
+            io:format("~p", [Room#room.name])
         end,
         Rooms
     ),
@@ -134,78 +65,3 @@ quit(Socket) ->
     % remove user from users
     ets:delete(users, Socket).
 
-% return a list of user in a room
-getUsersRoom(Socket, Room) ->
-    % get clients(users) in room
-    DbRoom = hd(ets:lookup(rooms, Room)),
-    Clients = DbRoom#room.clients,
-
-    Message = string:replace("[SYSTEM] Actually in the room [*] there are those users: [", "*", Room),
-    StringUsers =lists:map(
-        fun(Client) -> string:concat(socketToUser(Client), " | ") end,
-        Clients
-    ),
-    gen_tcp:send(Socket, string:concat(Message, string:concat(string:trim(StringUsers, trailing, " | "), "]"))).
-
-% get username by socket id
-socketToUser(Socket) -> 
-    DbUser = hd(ets:lookup(users, Socket)),
-    DbUser#user.name.
-
-% user enters in a room
-enterRoom(Socket, Room) ->
-    DbRoom = hd(ets:lookup(rooms, Room)),
-    Clients = DbRoom#room.clients ++ [Socket],
-    % insert user into user list room record
-    ets:insert(rooms, #room{name=Room, clients=Clients}),
-    
-    % send msg to rooms users
-    sendMessageRoom(Socket, Room, "entered the room").
-
-% user send a message in room 
-sendMessageRoom(Socket, Room, Text) ->
-    % get clients(users) in room
-    DbRoom = hd(ets:lookup(rooms, Room)),
-    Clients = DbRoom#room.clients,
-    % send message to each user in the room
-    lists:foreach(
-        fun(Client) ->          
-            %StringPid = string:replace("[$#*] ^", "$", socketToUser(Socket)),
-            %StringRoom = string:replace(StringPid, "*", Room),
-            %StringText = string:replace(StringRoom, "^", Text),
-            gen_tcp:send(Client, lists:append(["[", socketToUser(Socket), "#", Room, "] ", Text]))
-        end,
-        Clients
-    ).
-
-% user send private message
-sendMessagePrivate(Socket, Receiver, Text) ->
-    % get receiver client 
-    DbReceiver = hd(ets:match_object(users, #user{_='_', name=Receiver})),
-
-    % sender feedback
-    gen_tcp:send(Socket, lists:append(["[ -> ", DbReceiver#user.name, "] ", Text])),
-
-    % receiver feedback
-    gen_tcp:send(DbReceiver#user.socket, lists:append(["[ <- ", socketToUser(Socket), "] ", Text])).
-
-
-% get all rooms 
-getRooms(Socket) ->
-    DbRooms = ets:tab2list(rooms),
-
-    Message = "[#System] Actually there are those rooms: [",
-    StringRooms =lists:map(
-        fun(Room) -> string:concat(Room#room.name, " | ") end,
-        DbRooms
-    ),
-
-    gen_tcp:send(Socket, string:concat(Message, string:concat(string:trim(StringRooms, trailing, " | "), "]"))).
-
-% create new room
-createRoom(Socket, Room) ->
-    % insert room into table 
-    ets:insert(rooms, #room{name=Room, owner=socketToUser(Socket), clients=[Socket]}),
-
-    % send feedback message to user
-    gen_tcp:send(Socket, string:replace("[#System] You have created the room [*]", "*", Room)).
