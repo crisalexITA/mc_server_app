@@ -15,7 +15,7 @@ handleInput(Input, Socket) ->
         % user registered -> parse command
         {true} -> 
 
-            Command = parseCommand([{create_room, "^\\+room:\\w+"}, {exit_room, "^@@[A-Za-z0-9]{1,}:\\#exit"}, {enter_room, "^@@[A-Za-z0-9]{1,}:\\#enter"}, {send_private, "^@[A-Za-z0-9]{1,}:\\w+"}, {list_rooms, "\\?rooms"}, {help, "\\?help"}, {send_room, "^@@[A-Za-z0-9]{1,}:\\w+"}], StrippedInput),
+            Command = parseCommand([{quit, "\\#quit"}, {create_room, "^\\+room:\\w+"}, {exit_room, "^@@[A-Za-z0-9]{1,}:\\#exit"}, {users_room, "^@@[A-Za-z0-9]{1,}:\\#users"}, {enter_room, "^@@[A-Za-z0-9]{1,}:\\#enter"}, {send_private, "^@[A-Za-z0-9]{1,}:\\w+"}, {list_rooms, "\\?rooms"}, {help, "\\?help"}, {send_room, "^@@[A-Za-z0-9]{1,}:\\w+"}], StrippedInput),
 
             % do user action
             case Command of 
@@ -34,12 +34,18 @@ handleInput(Input, Socket) ->
                 
                 % enter room
                 enter_room -> enterRoom(Socket, StrippedInput);
+
+                % users room
+                users_room -> usersRoom(Socket, StrippedInput);
                     
                 % get room list
                 list_rooms -> listRooms(Input, Socket);
 
                 % get room list
                 help -> help(Socket);
+
+                % quit chat
+                quit -> quit(Socket);
 
                 % command not found
                 no_match -> output_handler:sendMessageSystem(Socket, "command not found, type '?help' to get available commands")
@@ -193,13 +199,46 @@ sendRoom(Socket, StrippedInput) ->
             output_handler:sendMessageRoom(Username, RoomName, Message)
     end.
 
+%% @doc get users list of a room
+usersRoom(Socket, StrippedInput) ->
+
+    % get room from Input
+    RoomName = getRecipientFromInput(StrippedInput),
+
+    % check if room exists
+    Response = data_manager:getRoom(RoomName),
+
+    case Response of 
+
+        % room not exists
+        ko ->
+
+            % send message to user
+            output_handler:sendMessageSystem(Socket, "Room '" ++ RoomName ++ "' not exists");
+        
+        % room exists
+        _  ->
+            
+            % loop through users to create the message
+            Clients = Response#room.clients,
+            Message = "Actually in room '" ++ RoomName ++ "' there are: ",
+            StringUsers = lists:map(
+                fun(Client) -> 
+                    string:concat("'" ++ data_manager:getUserFromSocket(Client) ++ "'", ",") 
+                end,
+                Clients
+            ),
+            output_handler:sendMessageSystem(Socket, string:concat(Message, string:trim(StringUsers, trailing, ",")))
+
+    end.
+
 %% @doc remove user from a room
 exitRoom(Socket, StrippedInput) ->
                 
     % get room from Input
     Room = getRecipientFromInput(StrippedInput),
 
-    %% add user to main room
+    %% remove user from the room
     data_manager:removeUserRoom(Socket, Room),
 
     % get username from socket
@@ -242,6 +281,7 @@ getRecipientFromInput(Input) ->
     StrippedRecipient = string:strip(Recipient, left, $@),
     StrippedRecipient.
 
+%% @doc get list of available commands
 help(Socket) -> 
     Rooms = "\e[0;36m" ++ "?rooms" ++ "\e[0m" ++ " -> get a list of all available rooms\n",
     RegisterName = "\e[0;36m" ++ "+user:<name>" ++ "\e[0m" ++ " -> register your username\n",
@@ -254,6 +294,39 @@ help(Socket) ->
     output_handler:sendMessageSystem(Socket, "List of available command:\n" ++ Rooms ++ RegisterName ++ SendRoom ++ SendPrivate ++ CreateRoom ++ UsersRoom ++ ExitRoom ++ EnterRoom).
 
 
+%% @doc remove user from tables user and rooms and close the connection
+quit(Socket) -> 
+
+    % get rooms
+    Rooms = data_manager:getRooms(),
+
+    % get username from socket
+    Username = data_manager:getUserFromSocket(Socket),
+    
+    % loop through rooms
+    lists:foreach(fun(Room) ->
+        
+        % check if user is in the room
+        Exists = lists:member(Socket, Room#room.clients),
+        case Exists of
+            
+            true ->
+                %% remove user from the room
+                data_manager:removeUserRoom(Socket, Room),
+
+                % send message to all users connected to the room
+                output_handler:sendMessageRoom("SYSTEM", Room#room.name, Username ++ " left the room");
+            
+            false -> false
+
+        end
+    end, Rooms),
+
+    % say goodbye to user
+    output_handler:sendMessageSystem(Socket, "Bye " ++Username ++ ", see you soon"),
+
+    % close connection
+    gen_tcp:close(Socket).
 
 
 

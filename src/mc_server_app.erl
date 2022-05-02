@@ -22,7 +22,7 @@ stop(_State) ->
 %% internal functions
 start_server() -> 
 
-    {ok, ListenSocket} = gen_tcp:listen(6666, [{active, true}, binary]),
+    {ok, ListenSocket} = gen_tcp:listen(1234, [{active, true}, binary]),
     
     data_manager:init(),
     
