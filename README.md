@@ -33,6 +33,8 @@ It is possible to communicate with the server via shell commands
 |**+user:\<user name\>**|the user registers his username|_+user:Bart_|
 |**#quit**|the user leaves the chat|_#quit_|
 
+![shell](https://github.com/crisalexITA/mc_server_app/blob/main/assets/client.png)
+
 Database
 -----
 The data is stored via ETS in the following tables:
@@ -50,7 +52,7 @@ Use
 To use the chat do the following steps:
 1. **clone server app:** https://github.com/crisalexITA/mc_server_app
 2. **start server:** open an os shell and go to server app folder and run _rebar3 shell_
-3. **start client:** open an os shell and connect to the server by _nc localhost 6666_
+3. **start client:** open an os shell and connect to the server by _nc localhost 1234_
 4. **register username:** from client set user nickname with _+user:\<user name\>_
 5. **execute commands:** use one of the commands specified above 
 
