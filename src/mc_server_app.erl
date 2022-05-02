@@ -34,7 +34,7 @@ handleClient(ListenSocket) ->
     spawn(fun() -> handleClient(ListenSocket) end),
     
     %  welcome message
-    gen_tcp:send(AcceptSocket, "\n\n**************************************\nchat server\n***************************************\nWelcome, please enter your name with command '+user:<username>'\n"),
+    gen_tcp:send(AcceptSocket, "\e[31m" ++ "\n\n**************************************\nchat server\n***************************************\n" ++ "\e[33m" ++ "[SYSTEM] " ++ "\e[0m" ++ "Welcome, please enter your name with command '+user:<username>'\n"),
 
     handleMessages(AcceptSocket).
 

@@ -82,8 +82,8 @@ registerUser(Socket, StrippedInput) ->
     %% register user
     data_manager:registerUser(Socket, Username),
 
-    %% send response
-    gen_tcp:send(Socket, "[SYSTEM] You has been registered as " ++ Username ++ "\n"),
+    %% send response to user
+    output_handler:sendMessageSystem(Socket, "You have been registered as " ++ Username),
 
     %% add user to main room
     data_manager:addUserRoom(Socket, "main"),
@@ -220,7 +220,7 @@ listRooms(Input, Socket) ->
     StringRooms = lists:map(
         
         fun(Room) -> 
-            string:concat("'" ++ Room#room.name ++ "',") 
+            string:concat("'" ++ Room#room.name ++ "'", ",") 
         end,
         Rooms
     ),
@@ -243,14 +243,14 @@ getRecipientFromInput(Input) ->
     StrippedRecipient.
 
 help(Socket) -> 
-    Rooms = "'?rooms' -> get a list of all available rooms\n",
-    RegisterName = "'+user:<name>' -> register your username\n",
-    SendRoom = "'@@<room name>:<message>' -> send a message in a room\n",
-    SendPrivate = "'@<user>:<message>' -> send a message to a user\n",
-    CreateRoom = "'+room:<room name>' -> create a new room\n",
-    UsersRoom = "'@@<room name>:#users' -> get a list of users in a room\n",
-    ExitRoom = "'@@<room name>:#exit -> exit room\n",
-    EnterRoom = "'@@<room name>:#enter -> enter room\n",
+    Rooms = "\e[0;36m" ++ "?rooms" ++ "\e[0m" ++ " -> get a list of all available rooms\n",
+    RegisterName = "\e[0;36m" ++ "+user:<name>" ++ "\e[0m" ++ " -> register your username\n",
+    SendRoom = "\e[0;36m" ++ "@@<room name>:<message>" ++ "\e[0m" ++ " -> send a message in a room\n",
+    SendPrivate = "\e[0;36m" ++ "@<user>:<message>" ++ "\e[0m" ++ " -> send a message to a user\n",
+    CreateRoom = "\e[0;36m" ++ "+room:<room name>" ++ "\e[0m" ++ " -> create a new room\n",
+    UsersRoom = "\e[0;36m" ++ "@@<room name>:#users" ++ "\e[0m" ++ " -> get a list of users in a room\n",
+    ExitRoom = "\e[0;36m" ++ "@@<room name>:#exit" ++ "\e[0m" ++ " -> exit room\n",
+    EnterRoom = "\e[0;36m" ++ "@@<room name>:#enter" ++ "\e[0m" ++ " -> enter room\n",
     output_handler:sendMessageSystem(Socket, "List of available command:\n" ++ Rooms ++ RegisterName ++ SendRoom ++ SendPrivate ++ CreateRoom ++ UsersRoom ++ ExitRoom ++ EnterRoom).
 
 
